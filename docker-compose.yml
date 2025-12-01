@@ -1,0 +1,67 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 1993-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Docker Compose file for Vision Model Server (External GPU Node)
+#
+# This file is designed to run on a separate GPU machine to offload
+# vision model inference. The Qwen2.5-VL model will be accessible via
+# HTTP API on port 8000.
+#
+# Usage:
+#   1. Copy this file to the external GPU machine
+#   2. Run: docker-compose -f docker-compose-models2.yml up -d
+#   3. Set VISION_MODEL_BASE_URL on main machine to http://<external-ip>:8000/v1
+#
+# GPU configuration tips:
+#   - Set QWEN_VL_GPU_COUNT environment variable to control GPU count
+#   - Set QWEN_VL_VISIBLE_GPUS to pin to specific GPUs (e.g., "0,1")
+#
+
+services:
+  qwen2.5-vl:
+    image: nvcr.io/nvidia/tensorrt-llm/release:spark-single-gpu-dev
+    container_name: qwen2.5-vl
+    shm_size: '1g'
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # Expose to external network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${QWEN_VL_GPU_COUNT:-1}
+              capabilities: [gpu]
+    environment:
+      TOKENIZERS_PARALLELISM: "false"
+      NCCL_P2P_LEVEL: SYS
+      NCCL_DEBUG: INFO
+      UCX_TLS: tcp,sm,self
+      UCX_MEMTYPE_CACHE: "n"
+      CUDA_VISIBLE_DEVICES: ${QWEN_VL_VISIBLE_GPUS:-0}
+      NVIDIA_VISIBLE_DEVICES: ${QWEN_VL_VISIBLE_GPUS:-0}
+    command: >
+      trtllm-serve serve Qwen/Qwen2-VL-7B-Instruct
+      --backend pytorch
+      --host 0.0.0.0
+      --port 8000
+      --trust_remote_code
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
