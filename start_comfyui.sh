@@ -43,14 +43,6 @@ source "$VENV_DIR/bin/activate"
 PYTHON_VERSION=$(python --version)
 echo "✓ Python version: $PYTHON_VERSION"
 
-# Install/upgrade dependencies
-echo ""
-echo "📥 Installing dependencies..."
-pip install --upgrade pip -q
-pip install -r requirements.txt -q
-
-echo "✓ Dependencies installed"
-
 # Create necessary directories
 mkdir -p models/checkpoints models/vae output input temp
 echo "✓ Directories created"
