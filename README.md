@@ -1,1 +1,1 @@
-# Multi-Agent-Chatbot-With-GB10_Node2
+# 멀티 에이전트 AI 챗봇 - Multi Node - Node2
